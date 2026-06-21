@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ドラクル 商圏分析ツール</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --navy: #0a1628;
+    --blue: #1a3a6b;
+    --accent: #2d7dd2;
+    --accent-light: #4a9eff;
+    --sky: #e8f4ff;
+    --white: #ffffff;
+    --gray: #8a9bb5;
+    --light: #f0f5fc;
+    --border: #c8d8ee;
+    --success: #2ecc71;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --text: #1a2a40;
+    --text-sub: #4a5a75;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+    background: var(--navy);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: var(--blue);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 2px solid var(--accent);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: 1px;
+  }
+
+  .logo span {
+    color: var(--accent-light);
+  }
+
+  .header-sub {
+    font-size: 12px;
+    color: var(--gray);
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 24px;
+    margin-left: auto;
+  }
+
+  .stat-item {
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent-light);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--gray);
+  }
+
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 320px;
+    background: var(--white);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .sidebar-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .type-select {
+    width: 110px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--light);
+    flex-shrink: 0;
+  }
+
+  .addr-input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .addr-input:focus, .type-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(45,125,210,0.15);
+  }
+
+  .name-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .add-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .add-btn:hover { background: var(--blue); }
+  .add-btn:disabled { background: var(--gray); cursor: not-allowed; }
+
+  .radius-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .radius-row label {
+    font-size: 12px;
+    color: var(--text-sub);
+    flex-shrink: 0;
+  }
+
+  .radius-slider {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+
+  .radius-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    width: 50px;
+    text-align: right;
+  }
+
+  .control-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .ctrl-btn {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    background: var(--light);
+    color: var(--text);
+    transition: all 0.2s;
+  }
+
+  .ctrl-btn:hover { background: var(--sky); border-color: var(--accent); }
+  .ctrl-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .point-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .point-card {
+    background: var(--light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .point-card:hover { border-color: var(--accent); background: var(--sky); }
+
+  .point-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    color: white;
+    font-weight: 700;
+  }
+
+  .icon-franchise { background: var(--accent); }
+  .icon-driver { background: var(--success); }
+  .icon-prospect { background: var(--warning); }
+  .icon-other { background: var(--gray); }
+
+  .point-info { flex: 1; min-width: 0; }
+
+  .point-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .point-addr {
+    font-size: 11px;
+    color: var(--text-sub);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .point-type-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px;
+    flex-shrink: 0;
+  }
+  .del-btn:hover { color: var(--danger); }
+
+  .analysis-panel {
+    background: var(--navy);
+    color: var(--white);
+    padding: 14px 16px;
+    border-top: 2px solid var(--accent);
+    flex-shrink: 0;
+  }
+
+  .analysis-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-light);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .analysis-item {
+    background: rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .analysis-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-light);
+  }
+
+  .analysis-lbl {
+    font-size: 10px;
+    color: var(--gray);
+    margin-top: 2px;
+  }
+
+  .strategy-box {
+    margin-top: 10px;
+    background: rgba(45,125,210,0.2);
+    border-left: 3px solid var(--accent-light);
+    padding: 8px 10px;
+    border-radius: 0 6px 6px 0;
+    font-size: 11px;
+    color: #c0d8f0;
+    line-height: 1.7;
+  }
+
+  #map {
+    flex: 1;
+    background: #1a2a40;
+  }
+
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(10,22,40,0.7);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .loading-overlay.show { display: flex; }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: var(--accent-light);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    color: var(--white);
+    font-size: 14px;
+  }
+
+  .legend {
+    position: absolute;
+    bottom: 24px;
+    right: 10px;
+    background: white;
+    border-radius: 8px;
+    padding: 10px 14px;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    font-size: 12px;
+  }
+
+  .legend-title {
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    color: var(--text-sub);
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 20px;
+    color: var(--gray);
+    font-size: 12px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--blue);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    z-index: 9999;
+    transition: transform 0.3s;
+    border: 1px solid var(--accent);
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">ドラクル <span>商圏分析</span></div>
+    <div class="header-sub">拠点マッピング・エリア戦略ツール</div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="stat-total">0</div>
+      <div class="stat-label">登録拠点数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-franchise">0</div>
+      <div class="stat-label">加盟店</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-driver">0</div>
+      <div class="stat-label">ドライバー</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-prospect">0</div>
+      <div class="stat-label">営業候補</div>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-title">拠点を追加</div>
+      <div class="input-row">
+        <select class="type-select" id="point-type">
+          <option value="franchise">加盟店</option>
+          <option value="driver">ドライバー</option>
+          <option value="prospect">営業候補</option>
+          <option value="other">その他</option>
+        </select>
+      </div>
+      <input class="name-input" type="text" id="point-name" placeholder="名称（例：東京トヨタ渋谷店）"/>
+      <div class="input-row">
+        <input class="addr-input" type="text" id="point-addr" placeholder="住所（例：東京都渋谷区道玄坂1-1）"/>
+      </div>
+      <button class="add-btn" id="add-btn" onclick="addPoint()">地図に追加</button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-title">表示設定</div>
+      <div class="radius-row">
+        <label>商圏半径</label>
+        <input class="radius-slider" type="range" id="radius-slider" min="1" max="30" value="5" oninput="updateRadius(this.value)"/>
+        <span class="radius-val" id="radius-val">5 km</span>
+      </div>
+      <div class="control-row">
+        <button class="ctrl-btn active" id="btn-circle" onclick="toggleCircle()">エリア円</button>
+        <button class="ctrl-btn active" id="btn-center" onclick="toggleCenter()">中心点</button>
+        <button class="ctrl-btn" id="btn-heat" onclick="toggleHeatMode()">密度色分け</button>
+      </div>
+      <div class="control-row">
+        <button class="ctrl-btn" onclick="fitAll()">全体表示</button>
+        <button class="ctrl-btn" onclick="clearAll()">全クリア</button>
+      </div>
+    </div>
+
+    <div class="point-list" id="point-list">
+      <div class="empty-state" id="empty-state">住所を入力して拠点を追加してください</div>
+    </div>
+
+    <div class="analysis-panel" id="analysis-panel" style="display:none">
+      <div class="analysis-title">エリア分析レポート</div>
+      <div class="analysis-grid">
+        <div class="analysis-item">
+          <div class="analysis-val" id="a-center">-</div>
+          <div class="analysis-lbl">中心エリア（最寄り住所）</div>
+        </div>
+        <div class="analysis-item">
+          <div class="analysis-val" id="a-spread">-</div>
+          <div class="analysis-lbl">拠点間最大距離</div>
+        </div>
+        <div class="analysis-item">
+          <div class="analysis-val" id="a-dense">-</div>
+          <div class="analysis-lbl">最密集エリア</div>
+        </div>
+        <div class="analysis-item">
+          <div class="analysis-val" id="a-blank">-</div>
+          <div class="analysis-lbl">空白距離（最大）</div>
+        </div>
+      </div>
+      <div class="strategy-box" id="strategy-text"></div>
+    </div>
+  </div>
+
+  <div style="position:relative; flex:1;">
+    <div id="map"></div>
+    <div class="legend">
+      <div class="legend-title">凡例</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2d7dd2"></div>加盟店</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>ドライバー</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div>営業候補</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8a9bb5"></div>その他</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e74c3c; border-radius:2px;"></div>重心・中心点</div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">住所を検索しています...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const map = L.map('map').setView([35.6762, 139.6503], 11);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 18
+}).addTo(map);
+
+const points = [];
+let showCircle = true;
+let showCenter = true;
+let heatMode = false;
+let centerMarker = null;
+let centerCircle = null;
+let radiusKm = 5;
+
+const typeConfig = {
+  franchise: { color: '#2d7dd2', label: '加盟店', icon: '店' },
+  driver: { color: '#2ecc71', label: 'ドライバー', icon: 'D' },
+  prospect: { color: '#f39c12', label: '営業候補', icon: '候' },
+  other: { color: '#8a9bb5', label: 'その他', icon: '他' }
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function createMarkerIcon(type) {
+  const cfg = typeConfig[type];
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:32px;height:32px;background:${cfg.color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+      <span style="transform:rotate(45deg);color:white;font-size:11px;font-weight:700;">${cfg.icon}</span>
+    </div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -34]
+  });
+}
+
+async function geocode(address) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&accept-language=ja`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'DorakuruShokenApp/1.0' } });
+  const data = await res.json();
+  if (data && data.length > 0) {
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+  }
+  return null;
+}
+
+async function reverseGeocode(lat, lng) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ja`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'DorakuruShokenApp/1.0' } });
+  const data = await res.json();
+  return data && data.address ? (data.address.suburb || data.address.city_district || data.address.city || '不明エリア') : '不明エリア';
+}
+
+async function addPoint() {
+  const addr = document.getElementById('point-addr').value.trim();
+  const name = document.getElementById('point-name').value.trim();
+  const type = document.getElementById('point-type').value;
+
+  if (!addr) { showToast('住所を入力してください'); return; }
+
+  const loading = document.getElementById('loading');
+  loading.classList.add('show');
+  document.getElementById('add-btn').disabled = true;
+
+  try {
+    const geo = await geocode(addr);
+    if (!geo) {
+      showToast('住所が見つかりませんでした。より詳細な住所で試してください');
+      return;
+    }
+
+    const cfg = typeConfig[type];
+    const displayName = name || addr;
+
+    const marker = L.marker([geo.lat, geo.lng], { icon: createMarkerIcon(type) })
+      .addTo(map)
+      .bindPopup(`<b>${displayName}</b><br><span style="color:#666;font-size:12px">${cfg.label}</span><br><span style="font-size:11px">${addr}</span>`);
+
+    let circle = null;
+    if (showCircle) {
+      circle = L.circle([geo.lat, geo.lng], {
+        radius: radiusKm * 1000,
+        color: cfg.color,
+        fillColor: cfg.color,
+        fillOpacity: 0.08,
+        weight: 1.5,
+        dashArray: '4,4'
+      }).addTo(map);
+    }
+
+    points.push({ lat: geo.lat, lng: geo.lng, addr, name: displayName, type, marker, circle });
+
+    document.getElementById('point-addr').value = '';
+    document.getElementById('point-name').value = '';
+
+    updateList();
+    updateStats();
+    updateAnalysis();
+    updateCenterMarker();
+
+    map.setView([geo.lat, geo.lng], Math.max(map.getZoom(), 12));
+    showToast(`${displayName} を追加しました`);
+
+  } catch(e) {
+    showToast('エラーが発生しました。再度お試しください');
+  } finally {
+    loading.classList.remove('show');
+    document.getElementById('add-btn').disabled = false;
+  }
+}
+
+document.getElementById('point-addr').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addPoint();
+});
+
+function removePoint(idx) {
+  const p = points[idx];
+  if (p.marker) map.removeLayer(p.marker);
+  if (p.circle) map.removeLayer(p.circle);
+  points.splice(idx, 1);
+  updateList();
+  updateStats();
+  updateAnalysis();
+  updateCenterMarker();
+}
+
+function updateList() {
+  const list = document.getElementById('point-list');
+  const empty = document.getElementById('empty-state');
+
+  if (points.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(empty);
+    empty.style.display = 'block';
+    return;
+  }
+
+  list.innerHTML = '';
+  points.forEach((p, i) => {
+    const cfg = typeConfig[p.type];
+    const card = document.createElement('div');
+    card.className = 'point-card';
+    card.innerHTML = `
+      <div class="point-icon icon-${p.type}">${cfg.icon}</div>
+      <div class="point-info">
+        <div class="point-name">${p.name}</div>
+        <div class="point-addr">${p.addr}</div>
+      </div>
+      <span class="point-type-badge" style="background:${cfg.color}">${cfg.label}</span>
+      <button class="del-btn" onclick="event.stopPropagation();removePoint(${i})">×</button>
+    `;
+    card.onclick = () => {
+      map.setView([p.lat, p.lng], 14);
+      p.marker.openPopup();
+    };
+    list.appendChild(card);
+  });
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = points.length;
+  document.getElementById('stat-franchise').textContent = points.filter(p => p.type === 'franchise').length;
+  document.getElementById('stat-driver').textContent = points.filter(p => p.type === 'driver').length;
+  document.getElementById('stat-prospect').textContent = points.filter(p => p.type === 'prospect').length;
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function getCentroid() {
+  if (points.length === 0) return null;
+  const lat = points.reduce((s,p) => s + p.lat, 0) / points.length;
+  const lng = points.reduce((s,p) => s + p.lng, 0) / points.length;
+  return { lat, lng };
+}
+
+function updateCenterMarker() {
+  if (centerMarker) { map.removeLayer(centerMarker); centerMarker = null; }
+  if (centerCircle) { map.removeLayer(centerCircle); centerCircle = null; }
+  if (points.length < 2 || !showCenter) return;
+
+  const c = getCentroid();
+  centerMarker = L.marker([c.lat, c.lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:20px;height:20px;background:#e74c3c;border:3px solid white;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    }),
+    zIndexOffset: 1000
+  }).addTo(map).bindPopup('<b>重心・中心点</b><br>登録拠点の平均中心');
+
+  if (showCircle) {
+    const maxDist = Math.max(...points.map(p => haversine(c.lat, c.lng, p.lat, p.lng)));
+    centerCircle = L.circle([c.lat, c.lng], {
+      radius: maxDist * 1000,
+      color: '#e74c3c',
+      fillColor: '#e74c3c',
+      fillOpacity: 0.04,
+      weight: 2,
+      dashArray: '8,4'
+    }).addTo(map);
+  }
+}
+
+async function updateAnalysis() {
+  const panel = document.getElementById('analysis-panel');
+  if (points.length < 2) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const c = getCentroid();
+
+  let maxDist = 0;
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i+1; j < points.length; j++) {
+      const d = haversine(points[i].lat, points[i].lng, points[j].lat, points[j].lng);
+      if (d > maxDist) maxDist = d;
+    }
+  }
+
+  // 最密集エリア：他の点との平均距離が最小の点
+  let minAvgDist = Infinity, denseIdx = 0;
+  points.forEach((p, i) => {
+    const avg = points.filter((_,j) => j !== i).reduce((s,q) => s + haversine(p.lat, p.lng, q.lat, q.lng), 0) / (points.length - 1);
+    if (avg < minAvgDist) { minAvgDist = avg; denseIdx = i; }
+  });
+
+  // 最大空白距離：中心から最も遠い点
+  const maxFromCenter = Math.max(...points.map(p => haversine(c.lat, c.lng, p.lat, p.lng)));
+
+  document.getElementById('a-spread').textContent = maxDist.toFixed(1) + ' km';
+  document.getElementById('a-dense').textContent = points[denseIdx].name;
+  document.getElementById('a-blank').textContent = maxFromCenter.toFixed(1) + ' km';
+
+  try {
+    const centerArea = await reverseGeocode(c.lat, c.lng);
+    document.getElementById('a-center').textContent = centerArea;
+  } catch(e) {
+    document.getElementById('a-center').textContent = '取得中...';
+  }
+
+  generateStrategy(maxDist, minAvgDist, maxFromCenter);
+}
+
+function generateStrategy(maxDist, minAvgDist, maxFromCenter) {
+  const franchiseCount = points.filter(p => p.type === 'franchise').length;
+  const driverCount = points.filter(p => p.type === 'driver').length;
+  const prospectCount = points.filter(p => p.type === 'prospect').length;
+
+  let text = '';
+
+  if (maxDist > 50) {
+    text += '拠点間の距離が広域に及んでいます。全体をカバーする中間拠点の設置または担当エリアの分割を検討するタイミングです。\n';
+  } else if (maxDist > 20) {
+    text += '広域展開の段階に入っています。中心エリアを軸に効率的なルート設計が重要になります。\n';
+  } else {
+    text += '拠点が比較的コンパクトにまとまっています。このエリアでの深耕と品質強化が次の一手です。\n';
+  }
+
+  if (driverCount < franchiseCount) {
+    text += `加盟店${franchiseCount}に対してドライバー${driverCount}名と、ドライバーが不足気味です。このエリアでのドライバー募集を優先しましょう。`;
+  } else if (prospectCount > 0) {
+    text += `営業候補${prospectCount}件があります。中心エリアに近い候補から優先的にアプローチすると効率的です。`;
+  } else if (franchiseCount > 0 && driverCount > 0) {
+    text += '加盟店とドライバーのバランスが取れています。空白エリアへの営業候補の追加登録でさらに分析が深まります。';
+  }
+
+  document.getElementById('strategy-text').textContent = text || '拠点を追加していくと、ここに戦略アドバイスが表示されます。';
+}
+
+function updateRadius(val) {
+  radiusKm = parseFloat(val);
+  document.getElementById('radius-val').textContent = val + ' km';
+  points.forEach(p => {
+    if (p.circle) {
+      p.circle.setRadius(radiusKm * 1000);
+    }
+  });
+  if (centerCircle && points.length >= 2) {
+    const c = getCentroid();
+    const maxDist = Math.max(...points.map(p => haversine(c.lat, c.lng, p.lat, p.lng)));
+    centerCircle.setRadius(maxDist * 1000);
+  }
+}
+
+function toggleCircle() {
+  showCircle = !showCircle;
+  document.getElementById('btn-circle').classList.toggle('active', showCircle);
+  points.forEach(p => {
+    if (showCircle && !p.circle) {
+      const cfg = typeConfig[p.type];
+      p.circle = L.circle([p.lat, p.lng], {
+        radius: radiusKm * 1000,
+        color: cfg.color,
+        fillColor: cfg.color,
+        fillOpacity: 0.08,
+        weight: 1.5,
+        dashArray: '4,4'
+      }).addTo(map);
+    } else if (!showCircle && p.circle) {
+      map.removeLayer(p.circle);
+      p.circle = null;
+    }
+  });
+  updateCenterMarker();
+}
+
+function toggleCenter() {
+  showCenter = !showCenter;
+  document.getElementById('btn-center').classList.toggle('active', showCenter);
+  updateCenterMarker();
+}
+
+function toggleHeatMode() {
+  heatMode = !heatMode;
+  document.getElementById('btn-heat').classList.toggle('active', heatMode);
+  points.forEach(p => {
+    if (p.circle) {
+      const cfg = typeConfig[p.type];
+      const nearbyCount = points.filter(q => q !== p && haversine(p.lat, p.lng, q.lat, q.lng) < radiusKm).length;
+      const opacity = heatMode ? Math.min(0.05 + nearbyCount * 0.1, 0.4) : 0.08;
+      p.circle.setStyle({ fillOpacity: opacity });
+    }
+  });
+}
+
+function fitAll() {
+  if (points.length === 0) return;
+  const group = L.featureGroup(points.map(p => p.marker));
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+function clearAll() {
+  if (points.length === 0) return;
+  if (!confirm('すべての拠点を削除しますか？')) return;
+  points.forEach(p => {
+    if (p.marker) map.removeLayer(p.marker);
+    if (p.circle) map.removeLayer(p.circle);
+  });
+  points.length = 0;
+  if (centerMarker) { map.removeLayer(centerMarker); centerMarker = null; }
+  if (centerCircle) { map.removeLayer(centerCircle); centerCircle = null; }
+  updateList();
+  updateStats();
+  document.getElementById('analysis-panel').style.display = 'none';
+  showToast('全拠点をクリアしました');
+}
+</script>
+</body>
+</html>
